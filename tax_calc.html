@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>提现税金计算器</title>
+<style>
+  body { font-family: Arial; padding: 20px; background: #f8f8f8; }
+  .box { background: #fff; padding: 20px; border-radius: 10px; }
+  input { width: 100%; padding: 10px; margin-top: 10px; }
+  button { width: 100%; padding: 12px; margin-top:10px; font-size:16px; border-radius:8px; background:#07c160; color:#fff; border:none; cursor:pointer; }
+  button.blue { background:#10AEFF; }
+  .result { background:#eee; padding:15px; margin-top:20px; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h2>提现税金计算器</h2>
+
+  <label>年度提现金额（元）</label>
+  <input type="number" id="amount" placeholder="例如 200000">
+
+  <button onclick="calcTax()">计算税金</button>
+  <button class="blue" onclick="suggest()">自动建议提现金额</button>
+
+  <div id="output" class="result" style="display:none;"></div>
+</div>
+
+<script>
+function calcTax(){
+  let amount = Number(document.getElementById("amount").value);
+  let taxable = amount * 0.8 - 60000;
+  if (taxable < 0) taxable = 0;
+
+  const brackets = [
+    { up:36000, rate:0.03, quick:0 },
+    { up:144000, rate:0.10, quick:2520 },
+    { up:300000, rate:0.20, quick:16920 },
+    { up:420000, rate:0.25, quick:31920 },
+    { up:660000, rate:0.30, quick:52920 },
+    { up:960000, rate:0.35, quick:85920 },
+    { up:Infinity, rate:0.45, quick:181920 }
+  ];
+
+  let rate=0, quick=0;
+  for(let b of brackets){
+    if(taxable <= b.up){ rate=b.rate; quick=b.quick; break; }
+  }
+
+  let tax = Math.max(taxable * rate - quick, 0);
+  let ratePct = (tax/amount*100).toFixed(2);
+
+  document.getElementById("output").style.display="block";
+  document.getElementById("output").innerHTML = `
+    <b>应纳税所得额：</b>¥${taxable.toFixed(2)}<br>
+    <b>年度个税：</b>¥${tax.toFixed(2)}<br>
+    <b>实际税率：</b>${ratePct}%<br>
+  `;
+}
+
+function suggest(){
+  let amount = Number(document.getElementById("amount").value);
+  const max = 100000;
+  let months = Math.ceil(amount / max);
+
+  let output = "";
+  if(months > 12){
+    output = `
+      ❗金额太大当年无法全部避开增值税<br><br>
+      ✅ 方案A: 跨年提现<br>
+      ✅ 方案B: 分多主体提现（合规前提下）<br>
+    `;
+  } else {
+    let avg = (amount / 12).toFixed(2);
+    output = `
+      ✅ 建议全年平均提现<br>
+      每月提现：<b>¥${avg}</b><br>
+      📌 月月 ≤ ¥100,000 → 不触发增值税<br>
+    `;
+  }
+
+  document.getElementById("output").style.display="block";
+  document.getElementById("output").innerHTML = output;
+}
+</script>
+
+</body>
+</html>
