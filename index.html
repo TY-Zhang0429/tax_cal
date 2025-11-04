@@ -3,145 +3,80 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>月度提现税金计算器</title>
+<title>月收入税金计算器</title>
 <style>
-  :root{
-    --primary:#07c160; --blue:#10AEFF; --text:#222; --muted:#666; --bg:#f7f7f7; --card:#fff;
-  }
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial;}
-  .wrap{max-width:680px;margin:0 auto;padding:16px;}
-  .card{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
-  h1{font-size:22px;margin:0 0 8px;}
-  p.sub{margin:0 0 14px;color:var(--muted);font-size:14px;}
-  label{display:block;font-size:16px;margin-top:10px;}
-  input[type=number]{width:100%;box-sizing:border-box;margin-top:8px;padding:14px 12px;font-size:18px;border:1px solid #ddd;border-radius:10px;appearance:textfield;}
-  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{appearance:none;margin:0;}
-  .btn{display:block;width:100%;padding:14px 12px;margin-top:10px;border:0;border-radius:12px;color:#fff;background:var(--primary);font-size:18px;line-height:1.2;touch-action:manipulation;}
-  .btn.blue{background:var(--blue);}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
-  .result{margin-top:14px;background:#fafafa;border:1px dashed #e6e6e6;border-radius:12px;padding:14px;}
-  .result h3{margin:0 0 8px;font-size:16px;}
+  body{font-family:-apple-system,Arial;margin:0;background:#f7f7f7;padding:16px;}
+  .card{background:#fff;border-radius:12px;padding:20px;max-width:640px;margin:0 auto;box-shadow:0 1px 3px rgba(0,0,0,.07);}
+  h1{font-size:22px;margin:0 0 10px;}
+  .sub{font-size:14px;color:#666;margin-bottom:15px;}
+  label{font-size:16px;display:block;margin-top:10px;}
+  input{width:100%;padding:14px;font-size:18px;margin-top:6px;border:1px solid #ddd;border-radius:10px;}
+  button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:10px;font-size:18px;color:#fff;background:#07c160;}
+  .result{margin-top:16px;background:#fafafa;border:1px dashed #ddd;padding:12px;border-radius:8px;}
   .row{display:flex;justify-content:space-between;margin:6px 0;font-size:16px;}
-  .muted{color:var(--muted);font-size:14px;}
-  .warn{color:#fa5151;font-weight:600;}
-  /* 大按钮+大字号避免 iOS 自动放大 */
-  @media (max-width:480px){
-    h1{font-size:20px}
-    .row{font-size:15px}
-  }
+  .muted{color:#666;font-size:13px;}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>月度提现税金计算器</h1>
-      <p class="sub">输入「每月提现金额」，系统将按 12 个月计算全年个税（规则：年应纳税所得 = 年提现×80% − 5000×12）。</p>
 
-      <label for="m">每月提现金额（元）</label>
-      <input id="m" type="number" inputmode="decimal" pattern="[0-9]*" placeholder="例如 18000" />
+<div class="card">
+  <h1>月收入税金计算器</h1>
+  <div class="sub">输入每月收入（比如工资/月收入），系统自动计算全年个税与税后收入。</div>
 
-      <div class="grid">
-        <button class="btn" onclick="calc()">计算税金</button>
-        <button class="btn blue" onclick="suggest()">自动建议提现金额</button>
-      </div>
+  <label>每月收入（元）</label>
+  <input type="number" id="monthly" placeholder="如 15000" inputmode="decimal" />
 
-      <div id="calcBox" class="result" style="display:none">
-        <h3>计算结果</h3>
-        <div class="row"><span>全年提现总额</span><b id="y_total"></b></div>
-        <div class="row"><span>应纳税所得额（年）</span><b id="taxable"></b></div>
-        <div class="row"><span>年应缴个税</span><b id="tax"></b></div>
-        <div class="row"><span>实际税率（税÷全年提现）</span><b id="rate"></b></div>
-        <div class="row"><span>月均到手（税后）</span><b id="net_per_month"></b></div>
-        <div class="muted">说明：默认假设每月提现 ≤ 100,000，未触发增值税及附加。</div>
-      </div>
+  <button onclick="calc()">计算税金</button>
 
-      <div id="sugBox" class="result" style="display:none">
-        <h3>建议提现方案</h3>
-        <div id="sugText"></div>
-      </div>
-    </div>
+  <div id="resultBox" class="result" style="display:none">
+    <div class="row"><span>年收入</span><b id="annual"></b></div>
+    <div class="row"><span>应纳税所得额（年）</span><b id="taxable"></b></div>
+    <div class="row"><span>年个税</span><b id="tax"></b></div>
+    <div class="row"><span>月均税后收入</span><b id="net_month"></b></div>
+    <div class="row"><span>实际税率</span><b id="rate"></b></div>
+    <div class="muted">注：公式为 年应纳税所得 = 年收入×80% − 60000</div>
   </div>
+</div>
 
 <script>
 const BRACKETS = [
-  { up: 36000,  rate: 0.03, quick: 0 },
-  { up: 144000, rate: 0.10, quick: 2520 },
-  { up: 300000, rate: 0.20, quick: 16920 },
-  { up: 420000, rate: 0.25, quick: 31920 },
-  { up: 660000, rate: 0.30, quick: 52920 },
-  { up: 960000, rate: 0.35, quick: 85920 },
-  { up: Infinity, rate: 0.45, quick: 181920 }
+  { up:36000, rate:0.03, quick:0 },
+  { up:144000, rate:0.10, quick:2520 },
+  { up:300000, rate:0.20, quick:16920 },
+  { up:420000, rate:0.25, quick:31920 },
+  { up:660000, rate:0.30, quick:52920 },
+  { up:960000, rate:0.35, quick:85920 },
+  { up:Infinity, rate:0.45, quick:181920 }
 ];
-const MAX_PER_MONTH = 100000;
 
-function fmt(n){ return '¥' + Number(n).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function pct(n){ return Number(n).toFixed(2)+'%'; }
-
-function taxFromAnnual(annual){
-  // 应纳税所得额（年）
-  let taxable = annual * 0.8 - 60000;
-  if (taxable < 0) taxable = 0;
-  // 税率&速算扣除
-  let rate=0, quick=0;
-  for (const b of BRACKETS){
-    if (taxable <= b.up){ rate=b.rate; quick=b.quick; break; }
-  }
-  let tax = Math.max(taxable * rate - quick, 0);
-  return { taxable, tax };
-}
+function fmt(n){return '¥' + Number(n).toLocaleString('zh-CN',{minimumFractionDigits:2});}
+function pct(n){return Number(n).toFixed(2)+'%';}
 
 function calc(){
-  const m = Number(document.getElementById('m').value || 0);
-  if (!m || m < 0) return;
+  const m = Number(document.getElementById("monthly").value);
+  if(!m || m<=0) return;
 
-  const annual = m * 12;
-  const { taxable, tax } = taxFromAnnual(annual);
-  const rate = annual > 0 ? (tax/annual*100) : 0;
-  const netPerMonth = ( (annual - tax) / 12 );
+  const annual = m*12;
+  let taxable = annual*0.8 - 60000;
+  if(taxable<0) taxable = 0;
 
-  // 填充
-  document.getElementById('y_total').textContent = fmt(annual);
-  document.getElementById('taxable').textContent = fmt(taxable);
-  document.getElementById('tax').textContent = fmt(tax);
-  document.getElementById('rate').textContent = pct(rate);
-  document.getElementById('net_per_month').textContent = fmt(netPerMonth);
-
-  document.getElementById('calcBox').style.display = 'block';
-}
-
-function suggest(){
-  const m = Number(document.getElementById('m').value || 0);
-  if (!m || m < 0) return;
-
-  const el = document.getElementById('sugText');
-  const annual = m * 12;
-
-  if (m > MAX_PER_MONTH){
-    el.innerHTML = `
-      <div class="warn">当前每月 ${fmt(m)} ＞ ¥100,000，单月将触发增值税与附加。</div>
-      <div>建议：</div>
-      <ul>
-        <li>将月份数增加（例如跨年分摊），确保<strong>每月 ≤ ¥100,000</strong>；</li>
-        <li>或在合规前提下使用多个主体分流提现；</li>
-        <li>或下调每月金额至 ≤ ¥100,000（例如 ${fmt(MAX_PER_MONTH)} ）。</li>
-      </ul>
-    `;
-  } else {
-    // 均分 12 个月，本来就 ≤ 10 万
-    const tip = `
-      当前每月 ${fmt(m)} ≤ ¥100,000，推荐保持「12 个月均匀提现」。<br>
-      年度总额：<strong>${fmt(annual)}</strong><br>
-      月度不触发增值税，直接按个税计算最省事。
-    `;
-    el.innerHTML = tip;
+  let rate=0, quick=0;
+  for(const b of BRACKETS){
+    if(taxable <= b.up){rate=b.rate;quick=b.quick;break;}
   }
-  document.getElementById('sugBox').style.display = 'block';
-}
+  const tax = Math.max(taxable*rate - quick, 0);
+  const netMonth = (annual - tax)/12;
+  const ratePct = (tax/annual*100).toFixed(2);
 
-// 回车即算，移动端更顺手
-document.getElementById('m').addEventListener('keydown', e=>{
-  if(e.key==='Enter'){ calc(); }
-});
+  document.getElementById("annual").textContent = fmt(annual);
+  document.getElementById("taxable").textContent = fmt(taxable);
+  document.getElementById("tax").textContent = fmt(tax);
+  document.getElementById("net_month").textContent = fmt(netMonth);
+  document.getElementById("rate").textContent = pct(ratePct);
+
+  document.getElementById("resultBox").style.display = "block";
+}
 </script>
+
 </body>
 </html>
